@@ -21,6 +21,20 @@ config IOSCHED_DEADLINE
 	  CSCAN service with FIFO expiration of requests, switching to
 	  a new point in the service tree and doing a batch of IO from there
 	  in case of expiry.
+	  
+config IOSCHED_MAPLE
+	tristate "Maple I/O scheduler"
+	default n
+	---help---
+	  Maple is based on the Zen and Simple I/O schedulers. It uses ZEN's 
+	  first-come-first-serve style algorithm with separate read/write 
+	  requests and improved former/latter request handling from SIO. Maple 
+	  is biased towards handling asynchronous requests before synchronous, 
+	  and read requests before write. While this can have negative aspects 
+	  on write intensive tasks like file copying, it slightly improves UI 
+	  responsiveness. When the device is asleep, maple increases the expiry 
+	  time of requests so that it can handle them more slowly, causing less 
+	  overhead.
 
 config IOSCHED_CFQ
 	tristate "CFQ I/O scheduler"
@@ -50,6 +64,9 @@ choice
 
 	config DEFAULT_DEADLINE
 		bool "Deadline" if IOSCHED_DEADLINE=y
+		
+	config DEFAULT_MAPLE
+		bool "MAPLE" if IOSCHED_MAPLE=y
 
 	config DEFAULT_CFQ
 		bool "CFQ" if IOSCHED_CFQ=y
@@ -62,6 +79,7 @@ endchoice
 config DEFAULT_IOSCHED
 	string
 	default "deadline" if DEFAULT_DEADLINE
+	default "maple" if DEFAULT_MAPLE
 	default "cfq" if DEFAULT_CFQ
 	default "noop" if DEFAULT_NOOP
 

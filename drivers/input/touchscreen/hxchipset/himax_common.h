@@ -270,6 +270,7 @@ struct himax_report_data {
 };
 
 struct himax_ts_data {
+	bool initialized;
 	bool suspended;
 	bool force_update;
 	atomic_t suspend_mode;
@@ -337,8 +338,6 @@ struct himax_ts_data {
 
 #if defined(CONFIG_FB)
 	struct notifier_block fb_notif;
-	struct workqueue_struct *himax_att_wq;
-	struct delayed_work work_att;
 #elif defined(CONFIG_HAS_EARLYSUSPEND)
 	struct early_suspend early_suspend;
 #endif
@@ -407,6 +406,7 @@ extern int irq_enable_count;
 
 extern int himax_chip_common_suspend(struct himax_ts_data *ts);
 extern int himax_chip_common_resume(struct himax_ts_data *ts);
+extern int himax_fb_register(struct himax_ts_data *ts);
 
 #endif
 

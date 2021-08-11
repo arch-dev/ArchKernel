@@ -153,6 +153,7 @@
 #define IC_HX83102	102
 
 #define HX_REPORT_SZ 128
+#define HX_CMD_BYTE 1
 
 enum HX_TS_PATH {
 	HX_REPORT_COORD = 1,

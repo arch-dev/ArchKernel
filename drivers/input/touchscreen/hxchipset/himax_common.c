@@ -653,7 +653,7 @@ int himax_input_register(struct himax_ts_data *ts)
 #else
 	set_bit(MT_TOOL_FINGER, ts->input_dev->keybit);
 #if defined(HX_PROTOCOL_B_3PA)
-	input_mt_init_slots(ts->input_dev, ts->nFinger_support, INPUT_MT_DIRECT);
+	input_mt_init_slots(ts->input_dev, HX_TOUCH_ID_MAX, INPUT_MT_DIRECT);
 #else
 	input_mt_init_slots(ts->input_dev, ts->nFinger_support);
 #endif
@@ -2526,18 +2526,11 @@ static int charger_notifier_callback(struct notifier_block *nb,
 int himax_chip_common_init(void)
 {
 
-	int ret = 0, err = -1;
+	int err = -1;
 	struct himax_ts_data *ts = private_ts;
-	struct himax_i2c_platform_data *pdata;
 	int attr_count;
 
-	I("PDATA START\n");
-	pdata = kzalloc(sizeof(*pdata), GFP_KERNEL);
-
-	if (pdata == NULL) { /*Allocate Platform data space*/
-		err = -ENOMEM;
-		goto err_dt_platform_data_fail;
-	}
+	struct himax_i2c_platform_data *pdata = ts->pdata;
 
 	I("ic_data START\n");
 	ic_data = kzalloc(sizeof(*ic_data), GFP_KERNEL);
@@ -2551,12 +2544,6 @@ int himax_chip_common_init(void)
 	if (hx_touch_data == NULL) {
 		err = -ENOMEM;
 		goto err_alloc_touch_data_failed;
-	}
-
-	if (himax_parse_dt(ts, pdata) < 0) {
-		I(" pdata is NULL for DT\n");
-		err = -ECANCELED;
-		goto err_alloc_dt_pdata_failed;
 	}
 
 #ifdef HX_RST_PIN_FUNC
@@ -2611,10 +2598,6 @@ int himax_chip_common_init(void)
 		goto error_ic_detect_failed;
 	}
 
-	if (pdata->virtual_key) {
-		ts->button = pdata->virtual_key;
-	}
-
 	g_auto_update_flag = (!g_core_fp.fp_calculateChecksum(false));
 	I("%s:num 1 g_auto_update_flag=%d\n", __func__, g_auto_update_flag);
 	g_auto_update_flag |= g_core_fp.fp_flash_lastdata_check();
@@ -2658,48 +2641,12 @@ FW_force_upgrade:
 #ifdef CONFIG_OF
 	ts->power = pdata->power;
 #endif
-	ts->pdata = pdata;
 	ts->x_channel = ic_data->HX_RX_NUM;
 	ts->y_channel = ic_data->HX_TX_NUM;
 	ts->nFinger_support = ic_data->HX_MAX_PT;
 	/*calculate the i2c data size*/
 	calcDataSize(ts->nFinger_support);
 	I("%s: calcDataSize complete\n", __func__);
-#ifdef CONFIG_OF
-	ts->pdata->abs_pressure_min        = 0;
-	ts->pdata->abs_pressure_max        = 200;
-	ts->pdata->abs_width_min           = 0;
-	ts->pdata->abs_width_max           = 200;
-	pdata->cable_config[0]             = 0xF0;
-	pdata->cable_config[1]             = 0x00;
-#endif
-	ts->suspended                      = false;
-#if defined(HX_USB_DETECT_CALLBACK) || defined(HX_USB_DETECT_GLOBAL)
-	ts->usb_connected = 0x00;
-	ts->cable_config = pdata->cable_config;
-
-	ts->charger_notif.notifier_call = charger_notifier_callback;
-	ret = power_supply_reg_notifier(&ts->charger_notif);
-	if (ret) {
-		E("Unable to register charger_notifier: %d\n",ret);
-		goto err_register_charger_notify_failed;
-	}
-#endif
-#ifdef	HX_PROTOCOL_A
-	ts->protocol_type = PROTOCOL_TYPE_A;
-#else
-	ts->protocol_type = PROTOCOL_TYPE_B;
-#endif
-	I("%s: Use Protocol Type %c\n", __func__,
-	  ts->protocol_type == PROTOCOL_TYPE_A ? 'A' : 'B');
-	ret = himax_input_register(ts);
-
-	if (ret) {
-		E("%s: Unable to register %s input device\n",
-		  __func__, ts->input_dev->name);
-		err = ret;
-		goto err_input_register_device_failed;
-	}
 
 #ifdef HX_SMART_WAKEUP
 	ts->SMWP_enable = 0;
@@ -2772,8 +2719,6 @@ err_report_data_init_failed:
 #ifdef HX_SMART_WAKEUP
 	wake_lock_destroy(&ts->ts_SMWP_wake_lock);
 #endif
-err_input_register_device_failed:
-	input_free_device(ts->input_dev);
 err_detect_failed:
 #ifdef HX_AUTO_UPDATE_FW
 	if (g_auto_update_flag) {
@@ -2800,13 +2745,10 @@ error_ic_detect_failed:
 err_power_failed:
 #endif
 err_gpio_power_config_failed:
-err_alloc_dt_pdata_failed:
 	kfree(hx_touch_data);
 err_alloc_touch_data_failed:
 	kfree(ic_data);
 err_dt_ic_data_fail:
-	kfree(pdata);
-err_dt_platform_data_fail:
 	probe_fail_flag = 1;
 	return err;
 }
@@ -2884,7 +2826,9 @@ int himax_chip_common_suspend(struct himax_ts_data *ts)
 		return 0;
 	}
 
+#ifdef HX_ESD_RECOVERY
 	HX_ESD_RESET_ACTIVATE = 0;
+#endif
 
 #if defined(HX_SMART_WAKEUP) || defined(HX_HIGH_SENSE) || defined(HX_USB_DETECT_GLOBAL)
 #ifndef HX_RESUME_SEND_CMD

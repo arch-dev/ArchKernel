@@ -1886,7 +1886,7 @@ static void himax_finger_leave(struct himax_ts_data *ts)
 #endif
 
 	for (loop_i = 0; loop_i < ts->nFinger_support; loop_i++) {
-		if (((ts->pre_finger_mask >> loop_i) & 1) == 1) {
+		if (((ts->old_finger >> loop_i) & 1) == 1) {
 			input_mt_slot(ts->input_dev, loop_i);
 			input_report_abs(ts->input_dev, ABS_MT_TOUCH_MAJOR, 0);
 			input_report_abs(ts->input_dev, ABS_MT_WIDTH_MAJOR, 0);

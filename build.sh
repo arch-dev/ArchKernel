@@ -3,7 +3,7 @@
 # Toolchain PATH
 PATH="/home/arch-dev/android/dotos/prebuilts/clang/host/linux-x86/clang-r353983c/bin:/home/arch-dev/android/dotos/prebuilts/gcc/linux-x86/aarch64/aarch64-linux-android-4.9/bin:${PATH}"
 
-DEFCONFIG=nethunter_defconfig
+DEFCONFIG=arch_defconfig
 VERSION=ArchKernel-Custom-OneVision-v1.0
 
 # Compilation variables

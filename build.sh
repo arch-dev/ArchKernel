@@ -21,6 +21,9 @@ echo Bulding AnyKernel3 flashable zip...
 
 cp -rf arch/$ARCH/boot/Image AnyKernel3/Image
 [ -e ${VERSION}.zip ] && rm ${VERSION}.zip
-zip -r9 ${VERSION}.zip AnyKernel3/* -x .git README.md *placeholder
+cd AnyKernel3
+zip -r9 ${VERSION}.zip * -x .git README.md *placeholder
+mv ${VERSION}.zip ../${VERSION}.zip
+cd ..
 
 echo Build finished. You can find the flashable under the root dir.

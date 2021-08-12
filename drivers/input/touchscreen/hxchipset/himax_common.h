@@ -377,7 +377,7 @@ struct himax_ts_data {
 	struct notifier_block charger_notif;
 #endif
 
-	uint8_t *i2c_data; /* for I2C DMA transfer */
+	uint8_t *report_i2c_data;
 };
 
 struct himax_debug {

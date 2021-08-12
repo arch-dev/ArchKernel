@@ -429,10 +429,7 @@ static void himax_mcu_resume_ic_action(void)
 
 static void himax_mcu_suspend_ic_action(void)
 {
-	/* Keep TS_RESET PIN to LOW, to avoid leakage during suspend */
-#ifdef HX_RST_PIN_FUNC
-	himax_rst_gpio_set(private_ts->rst_gpio, 0);
-#endif
+	/* Nothing to do */
 }
 
 static void himax_mcu_power_on_init(void)

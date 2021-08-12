@@ -2118,7 +2118,7 @@ UPDATE_FW:
 
 
 #ifdef CONFIG_FB
-int himax_fb_register(struct work_struct *work)
+static void himax_fb_register(struct work_struct *work)
 {
 	int ret = 0;
 	struct himax_ts_data *ts = container_of(work, struct himax_ts_data, work_att.work);
@@ -2129,8 +2129,6 @@ int himax_fb_register(struct work_struct *work)
 	if (ret) {
 		E(" Unable to register fb_notifier: %d\n", ret);
 	}
-	
-	return ret;
 }
 #endif
 
@@ -2704,6 +2702,19 @@ FW_force_upgrade:
 		goto err_input_register_device_failed;
 	}
 
+#ifdef CONFIG_FB
+	ts->himax_att_wq = create_singlethread_workqueue("HMX_ATT_reuqest");
+
+	if (!ts->himax_att_wq) {
+		E(" allocate syn_att_wq failed\n");
+		err = -ENOMEM;
+		goto err_get_intr_bit_failed;
+	}
+
+	INIT_DELAYED_WORK(&ts->work_att, himax_fb_register);
+	queue_delayed_work(ts->himax_att_wq, &ts->work_att, msecs_to_jiffies(15000));
+#endif
+
 #ifdef HX_SMART_WAKEUP
 	ts->SMWP_enable = 0;
 	wake_lock_init(&ts->ts_SMWP_wake_lock, WAKE_LOCK_SUSPEND, HIMAX_common_NAME);
@@ -2775,6 +2786,11 @@ err_report_data_init_failed:
 #ifdef HX_SMART_WAKEUP
 	wake_lock_destroy(&ts->ts_SMWP_wake_lock);
 #endif
+#ifdef CONFIG_FB
+	cancel_delayed_work_sync(&ts->work_att);
+	destroy_workqueue(ts->himax_att_wq);
+err_get_intr_bit_failed:
+#endif
 err_input_register_device_failed:
 	input_free_device(ts->input_dev);
 err_detect_failed:
@@ -2844,6 +2860,8 @@ void himax_chip_common_deinit(void)
 #ifdef CONFIG_FB
 	if (fb_unregister_client(&ts->fb_notif))
 		E("Error occurred while unregistering fb_notifier.\n");
+	cancel_delayed_work_sync(&ts->work_att);
+	destroy_workqueue(ts->himax_att_wq);
 #endif
 	input_free_device(ts->input_dev);
 #ifdef HX_ZERO_FLASH

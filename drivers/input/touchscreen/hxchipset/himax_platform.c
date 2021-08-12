@@ -193,31 +193,29 @@ int himax_bus_read(uint8_t command, uint8_t *data, uint32_t length, uint8_t toRe
 		{
 			.addr = client->addr,
 			.flags = 0,
-			.len = HX_CMD_BYTE,
-			.buf = buf,
+			.len = 1,
+			.buf = &command,
 		},
 		{
 			.addr = client->addr,
 			.flags = I2C_M_RD,
 			.len = length,
-			.buf = buf + HX_CMD_BYTE,
+			.buf = buf,
 		}
 	};
 	
-	if (length > HX_REPORT_SZ) {
-		W("%s: data length too large %d!\n", __func__, length);
-		buf = kmalloc(length + HX_CMD_BYTE, GFP_KERNEL);
+	if (length > HX_REPORT_SZ * 2) {
+		E("%s: data length too large %d!\n", __func__, length);
+		buf = kmalloc(length, GFP_KERNEL);
 		if (!buf) {
-			E("%s: failed realloc buf %d\n", __func__, length + HX_CMD_BYTE);
+			E("%s: failed realloc buf %d\n", __func__, length);
 			return -EIO;
 		}
 		reallocate = true;
-		msg[0].buf = buf;
-		msg[1].buf = buf + HX_CMD_BYTE;
+		msg[1].buf = buf;
 	}
 
 	mutex_lock(&ts->rw_lock);
-	buf[0] = command;
 
 	for (retry = 0; retry < toRetry; retry++) {
 		if (i2c_transfer(client->adapter, msg, 2) == 2)
@@ -234,7 +232,7 @@ int himax_bus_read(uint8_t command, uint8_t *data, uint32_t length, uint8_t toRe
 		return -EIO;
 	}
 
-	memcpy(data, buf + HX_CMD_BYTE, length);
+	memcpy(data, buf, length);
 	mutex_unlock(&ts->rw_lock);
 
 	if (reallocate)
@@ -254,16 +252,16 @@ int himax_bus_write(uint8_t command, uint8_t *data, uint32_t length, uint8_t toR
 		{
 			.addr = client->addr,
 			.flags = 0,
-			.len = length + HX_CMD_BYTE,
+			.len = length + 1,
 			.buf = buf,
 		}
 	};
 	
-	if (length > HX_REPORT_SZ) {
-		W("%s: data length too large %d!\n", __func__, length);
-		buf = kmalloc(length + HX_CMD_BYTE, GFP_KERNEL);
+	if (length + 1 > HX_REPORT_SZ * 2) {
+		E("%s: data length too large %d!\n", __func__, length + 1);
+		buf = kmalloc(length + 1, GFP_KERNEL);
 		if (!buf) {
-			E("%s: failed realloc buf %d\n", __func__, length + HX_CMD_BYTE);
+			E("%s: failed realloc buf %d\n", __func__, length + 1);
 			return -EIO;
 		}
 		reallocate = true;
@@ -271,7 +269,7 @@ int himax_bus_write(uint8_t command, uint8_t *data, uint32_t length, uint8_t toR
 
 	mutex_lock(&ts->rw_lock);
 	buf[0] = command;
-	memcpy(buf + HX_CMD_BYTE, data, length);
+	memcpy(buf + 1, data, length);
 
 	for (retry = 0; retry < toRetry; retry++) {
 		if (i2c_transfer(client->adapter, msg, 1) == 1)
@@ -317,8 +315,8 @@ int himax_bus_master_write(uint8_t *data, uint32_t length, uint8_t toRetry)
 		}
 	};
 	
-	if (length > HX_REPORT_SZ) {
-		W("%s: data length too large %d!\n", __func__, length);
+	if (length > HX_REPORT_SZ * 2) {
+		E("%s: data length too large %d!\n", __func__, length);
 		buf = kmalloc(length, GFP_KERNEL);
 		if (!buf) {
 			E("%s: failed realloc buf %d\n", __func__, length);
@@ -798,7 +796,7 @@ int himax_chip_common_probe(struct i2c_client *client, const struct i2c_device_i
 	mutex_init(&ts->rw_lock);
 	private_ts = ts;
 	
-	ts->report_i2c_data = kmalloc(HX_REPORT_SZ + HX_CMD_BYTE, GFP_KERNEL);
+	ts->report_i2c_data = kmalloc(HX_REPORT_SZ * 2, GFP_KERNEL);
 	if (ts->report_i2c_data == NULL) {
 		E("%s: allocate report_i2c_data failed\n", __func__);
 		ret = -ENOMEM;

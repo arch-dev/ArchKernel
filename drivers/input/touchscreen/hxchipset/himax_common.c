@@ -2556,7 +2556,6 @@ int himax_chip_common_init(void)
 
 	if (himax_parse_dt(ts, pdata) < 0) {
 		I(" pdata is NULL for DT\n");
-		err = -ECANCELED;
 		goto err_alloc_dt_pdata_failed;
 	}
 
@@ -2575,7 +2574,6 @@ int himax_chip_common_init(void)
 
 		if (ret < 0) {
 			E("%s: power on failed\n", __func__);
-			err = ret;
 			goto err_power_failed;
 		}
 	}
@@ -2608,7 +2606,6 @@ int himax_chip_common_init(void)
 		g_core_fp.fp_chip_init();
 	} else {
 		E("%s: function point of chip_init is NULL!\n", __func__);
-		err = -ECANCELED;
 		goto error_ic_detect_failed;
 	}
 
@@ -2649,7 +2646,6 @@ FW_force_upgrade:
 	/*Himax Power On and Load Config*/
 	if (himax_loadSensorConfig(pdata)) {
 		E("%s: Load Sesnsor configuration failed, unload driver.\n", __func__);
-		err = -ECANCELED;
 		goto err_detect_failed;
 	}
 
@@ -2698,7 +2694,6 @@ FW_force_upgrade:
 	if (ret) {
 		E("%s: Unable to register %s input device\n",
 		  __func__, ts->input_dev->name);
-		err = ret;
 		goto err_input_register_device_failed;
 	}
 
@@ -2732,7 +2727,6 @@ FW_force_upgrade:
 
 	if (himax_common_proc_init()) {
 		E(" %s: himax_common proc_init failed!\n", __func__);
-		err = -ECANCELED;
 		goto err_creat_proc_file_failed;
 	}
 

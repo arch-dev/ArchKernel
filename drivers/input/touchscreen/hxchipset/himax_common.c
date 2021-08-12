@@ -2115,10 +2115,9 @@ UPDATE_FW:
 
 
 #ifdef CONFIG_FB
-int himax_fb_register(struct work_struct *work)
+int himax_fb_register(struct himax_ts_data *ts)
 {
 	int ret = 0;
-	struct himax_ts_data *ts = container_of(work, struct himax_ts_data, work_att.work);
 	I(" %s in\n", __func__);
 	ts->fb_notif.notifier_call = fb_notifier_callback;
 	ret = fb_register_client(&ts->fb_notif);

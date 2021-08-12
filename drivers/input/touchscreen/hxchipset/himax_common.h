@@ -152,8 +152,6 @@
 
 #define IC_HX83102	102
 
-#define HX_REPORT_SZ 128
-
 enum HX_TS_PATH {
 	HX_REPORT_COORD = 1,
 	HX_REPORT_SMWP_EVENT,
@@ -375,8 +373,6 @@ struct himax_ts_data {
 	uint8_t *cable_config;
 	struct notifier_block charger_notif;
 #endif
-
-	uint8_t *report_i2c_data;
 };
 
 struct himax_debug {

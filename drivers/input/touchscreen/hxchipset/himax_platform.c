@@ -185,10 +185,7 @@ int himax_parse_dt(struct himax_ts_data *ts,
 int himax_bus_read(uint8_t command, uint8_t *data, uint32_t length, uint8_t toRetry)
 {
 	int retry;
-	bool reallocate = false;
-	struct himax_ts_data *ts = private_ts;
-	uint8_t *buf = ts->report_i2c_data;
-	struct i2c_client *client = ts->client;
+	struct i2c_client *client = private_ts->client;
 	struct i2c_msg msg[] = {
 		{
 			.addr = client->addr,
@@ -200,22 +197,10 @@ int himax_bus_read(uint8_t command, uint8_t *data, uint32_t length, uint8_t toRe
 			.addr = client->addr,
 			.flags = I2C_M_RD,
 			.len = length,
-			.buf = buf,
+			.buf = data,
 		}
 	};
-	
-	if (length > HX_REPORT_SZ * 2) {
-		E("%s: data length too large %d!\n", __func__, length);
-		buf = kmalloc(length, GFP_KERNEL);
-		if (!buf) {
-			E("%s: failed realloc buf %d\n", __func__, length);
-			return -EIO;
-		}
-		reallocate = true;
-		msg[1].buf = buf;
-	}
-
-	mutex_lock(&ts->rw_lock);
+	mutex_lock(&private_ts->rw_lock);
 
 	for (retry = 0; retry < toRetry; retry++) {
 		if (i2c_transfer(client->adapter, msg, 2) == 2)
@@ -228,26 +213,19 @@ int himax_bus_read(uint8_t command, uint8_t *data, uint32_t length, uint8_t toRe
 		E("%s: i2c_read_block retry over %d\n",
 		  __func__, toRetry);
 		i2c_error_count = toRetry;
-		mutex_unlock(&ts->rw_lock);
+		mutex_unlock(&private_ts->rw_lock);
 		return -EIO;
 	}
 
-	memcpy(data, buf, length);
-	mutex_unlock(&ts->rw_lock);
-
-	if (reallocate)
-		kfree(buf);
-
+	mutex_unlock(&private_ts->rw_lock);
 	return 0;
 }
 
 int himax_bus_write(uint8_t command, uint8_t *data, uint32_t length, uint8_t toRetry)
 {
 	int retry/*, loop_i*/;
-		bool reallocate = false;
-	struct himax_ts_data *ts = private_ts;
-	uint8_t *buf = ts->report_i2c_data;
-	struct i2c_client *client = ts->client;
+	uint8_t buf[length + 1];
+	struct i2c_client *client = private_ts->client;
 	struct i2c_msg msg[] = {
 		{
 			.addr = client->addr,
@@ -256,18 +234,7 @@ int himax_bus_write(uint8_t command, uint8_t *data, uint32_t length, uint8_t toR
 			.buf = buf,
 		}
 	};
-	
-	if (length + 1 > HX_REPORT_SZ * 2) {
-		E("%s: data length too large %d!\n", __func__, length + 1);
-		buf = kmalloc(length + 1, GFP_KERNEL);
-		if (!buf) {
-			E("%s: failed realloc buf %d\n", __func__, length + 1);
-			return -EIO;
-		}
-		reallocate = true;
-	}
-
-	mutex_lock(&ts->rw_lock);
+	mutex_lock(&private_ts->rw_lock);
 	buf[0] = command;
 	memcpy(buf + 1, data, length);
 
@@ -282,15 +249,11 @@ int himax_bus_write(uint8_t command, uint8_t *data, uint32_t length, uint8_t toR
 		E("%s: i2c_write_block retry over %d\n",
 		  __func__, toRetry);
 		i2c_error_count = toRetry;
-		mutex_unlock(&ts->rw_lock);
+		mutex_unlock(&private_ts->rw_lock);
 		return -EIO;
 	}
 
-	mutex_unlock(&ts->rw_lock);
-
-	if (reallocate)
-		kfree(buf);
-
+	mutex_unlock(&private_ts->rw_lock);
 	return 0;
 }
 
@@ -302,9 +265,7 @@ int himax_bus_write_command(uint8_t command, uint8_t toRetry)
 int himax_bus_master_write(uint8_t *data, uint32_t length, uint8_t toRetry)
 {
 	int retry/*, loop_i*/;
-	bool reallocate = false;
-	struct himax_ts_data *ts = private_ts;
-	uint8_t *buf = ts->report_i2c_data;
+	uint8_t buf[length];
 	struct i2c_client *client = private_ts->client;
 	struct i2c_msg msg[] = {
 		{
@@ -314,18 +275,7 @@ int himax_bus_master_write(uint8_t *data, uint32_t length, uint8_t toRetry)
 			.buf = buf,
 		}
 	};
-	
-	if (length > HX_REPORT_SZ * 2) {
-		E("%s: data length too large %d!\n", __func__, length);
-		buf = kmalloc(length, GFP_KERNEL);
-		if (!buf) {
-			E("%s: failed realloc buf %d\n", __func__, length);
-			return -EIO;
-		}
-		reallocate = true;
-	}
-
-	mutex_lock(&ts->rw_lock);
+	mutex_lock(&private_ts->rw_lock);
 	memcpy(buf, data, length);
 
 	for (retry = 0; retry < toRetry; retry++) {
@@ -339,15 +289,11 @@ int himax_bus_master_write(uint8_t *data, uint32_t length, uint8_t toRetry)
 		E("%s: i2c_write_block retry over %d\n",
 		  __func__, toRetry);
 		i2c_error_count = toRetry;
-		mutex_unlock(&ts->rw_lock);
+		mutex_unlock(&private_ts->rw_lock);
 		return -EIO;
 	}
 
-	mutex_unlock(&ts->rw_lock);
-
-	if (reallocate)
-		kfree(buf);
-
+	mutex_unlock(&private_ts->rw_lock);
 	return 0;
 }
 
@@ -789,13 +735,6 @@ int himax_chip_common_probe(struct i2c_client *client, const struct i2c_device_i
 	ts->dev = &client->dev;
 	mutex_init(&ts->rw_lock);
 	private_ts = ts;
-	
-	ts->report_i2c_data = kmalloc(HX_REPORT_SZ * 2, GFP_KERNEL);
-	if (ts->report_i2c_data == NULL) {
-		E("%s: allocate report_i2c_data failed\n", __func__);
-		ret = -ENOMEM;
-		goto err_report_i2c_data;
-	}
 
 	/*
 	 * ts chip initialization is deferred till FB_UNBLACK event;
@@ -808,12 +747,7 @@ int himax_chip_common_probe(struct i2c_client *client, const struct i2c_device_i
 		goto err_fb_notify_reg_failed;
 #endif
 
-	return ret;
-
 	err_fb_notify_reg_failed:
-	kfree(ts->report_i2c_data);
-	err_report_i2c_data:
-	kfree(ts);
 	err_alloc_data_failed:
 	err_check_functionality_failed:
 
